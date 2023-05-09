@@ -6,7 +6,7 @@
   vars:
     ocp_master_api: "https://api.cluster-dr8sh.dr8sh.sandbox539.opentlc.com:6443"
     project_name: "west-travel-agency"
-    pod_count_thresold: 2
+    pod_count_thresold: 5
     vs_name: "west-discountvs.yml"
   tasks:
     - block:
@@ -45,9 +45,9 @@
             var: pod_count
 
 
-        - name: apply burst rule when pod count < {{ pod_count_thresold }}
+        - name: apply burst rule when pod count > {{ pod_count_thresold }}
           shell: "oc apply -f {{ vs_name }}"
-          when: pod_count.stdout | int < pod_count_thresold
+          when: pod_count.stdout | int > pod_count_thresold
           register: apply_burst_rule 
 
         - name: print burst rule
