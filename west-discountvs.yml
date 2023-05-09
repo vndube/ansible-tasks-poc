@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  annotations:
+  name: discounts
+  namespace: west-travel-agency
+spec:
+  hosts:
+  - discounts.west-travel-agency.svc.cluster.local
+  http:
+  - route:
+    - destination:
+        host: discounts.travel-agency.svc.east-mesh-imports.local
+      weight: 75
+    - destination:
+        host: discounts.west-travel-agency.svc.cluster.local
+      weight: 25

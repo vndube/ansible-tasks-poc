@@ -1,0 +1,62 @@
+---
+- name: ocp login demo
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  vars:
+    ocp_master_api: "https://api.cluster-mtmjq.mtmjq.sandbox3181.opentlc.com:6443"
+    project_name: "east-travel-agency"
+    pod_count_thresold: 2
+    vs_name: "east-discountvs.yml"
+   
+  tasks:
+    - block:
+        - include_vars: east_ocp_passwrd.yml 
+
+        - name: login to cluster using kubeadmin
+          shell: "oc login -u {{ ocp_admin_user }} -p {{ ocp_admin_password }} --server={{ ocp_master_api }}  --insecure-skip-tls-verify=true"
+          register: ocp_auth_results
+       
+        - name: debug auth result
+          debug: 
+            var: ocp_auth_results
+
+        - name: switch to {{ project_name }} namespace
+          kubernetes.core.k8s: 
+            api_version: v1
+            kind: Namespace
+            name: "{{ project_name }}"
+            state: present
+        
+        - name: get pod list in {{ project_name }} namespace
+          shell: "oc get pods"
+          register: pod_list
+       
+        - name: pod list
+          debug: 
+            var: pod_list
+
+        - name: get pod counts in {{ project_name }} namespace
+          shell: "oc get pods --field-selector=status.phase=Running --no-headers=true|grep discounts-v1 |wc -l"
+          register: pod_count
+       
+        - name: print pod count
+          debug: 
+            var: pod_count
+
+
+        - name: apply burst rule when pod count < {{ pod_count_thresold }}
+          shell: "oc apply -f {{ vs_name }}"
+          when: pod_count.stdout | int < pod_count_thresold
+          register: apply_burst_rule 
+
+        - name: print burst rule
+          debug: 
+            var: apply_burst_rule
+
+      always:
+       - name: If login succeeded, try to log out (revoke access token)
+         shell: "oc logout"
+         when: ocp_auth_results.stdout is search('Login successful')
+#         when: ocp_auth_results is succeeded
+         
